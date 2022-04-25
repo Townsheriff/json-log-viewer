@@ -33,6 +33,7 @@ class MainPanel extends BaseWidget {
       this.fixCursor();
       this.renderLines();
     });
+    this.loadFile(opts.logFile);
     this.renderLines();
   }
 
@@ -43,6 +44,7 @@ class MainPanel extends BaseWidget {
     this.file = file;
     this.rawLines = readLog(file);
     this.log('loaded', this.lines.length);
+    this.setUpdated();
     this.renderLines();
   }
 
@@ -138,6 +140,10 @@ class MainPanel extends BaseWidget {
       this.displayDetails();
       return;
     }
+    if (ch === 'r') {
+      this.loadFile(this.file);
+      return;
+    }
     if (ch === '0') {
       this.firstPage();
       return;
@@ -219,9 +225,22 @@ class MainPanel extends BaseWidget {
 
   openSort() {
     this.setMode('sort');
-    this.openPicker('Sort by', FIELDS, (err, sort) => {
+    this.openPicker('Sort by', FIELDS.concat('other'), (err, sort) => {
       if (!sort) { return this.resetMode(); }
       if (err) { return; }
+      if (sort === 'other') {
+        return this.openCustomSort();
+      }
+      if (this.sortKey === sort && this.sortAsc) {
+        return this.setSort(`-${sort}`);
+      }
+      this.setSort(sort);
+    });
+  }
+
+  openCustomSort() {
+    this.prompt(`Field to sort:`, '', (sort) => {
+      if (!sort) { return this.resetMode(); }
       if (this.sortKey === sort && this.sortAsc) {
         return this.setSort(`-${sort}`);
       }
@@ -277,6 +296,7 @@ class MainPanel extends BaseWidget {
 
   setSort(sort) {
     this.sort = sort;
+    this.setUpdated();
     this.renderLines();
   }
 
@@ -465,9 +485,6 @@ class MainPanel extends BaseWidget {
 
   pageUp() {
     const relativeRow = this.relativeRow;
-    if (this.row - this.pageHeight < 0) {
-      return;
-    }
     this.row = Math.max(0, this.row - this.pageHeight);
     this.initialRow = Math.max(0, this.row - relativeRow);
     this.renderLines();
